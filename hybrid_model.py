@@ -112,10 +112,15 @@ class Mamba2Layer(nn.Module):
 
 
 class GatedDeltaNetLayer(nn.Module):
-    def __init__(self, dim: int, num_heads: int = 8, **_):
+    def __init__(self, dim: int, num_heads: int = 8, head_dim: int = None, **_):
         super().__init__()
         from fla.layers import GatedDeltaNet  # pip install flash-linear-attention
-        self.mixer = GatedDeltaNet(hidden_size=dim, num_heads=num_heads)
+        # head_dim'i dim/num_heads'e göre EXPLICIT vermek şart -- fla'nın varsayılanı
+        # (256) hidden_size'dan bağımsız sabit, verilmezse iç boyut hedeflenenin
+        # kat kat üzerine şişer (bkz. configs.py'deki not).
+        if head_dim is None:
+            head_dim = dim // num_heads
+        self.mixer = GatedDeltaNet(hidden_size=dim, num_heads=num_heads, head_dim=head_dim)
 
     def forward(self, x):
         out = self.mixer(x)

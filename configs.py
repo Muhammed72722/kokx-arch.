@@ -73,7 +73,10 @@ CONFIG_C_GDN_HYBRID = ModelConfig(
     n_layers=N_LAYERS,
     layer_pattern=build_layer_pattern(N_LAYERS, attn_ratio=0.25, other="gdn"),
     mixer_kwargs={
-        "gdn": {"num_heads": 10},
+        # head_dim'i EXPLICIT vermek şart: fla varsayılanı head_dim=256, hidden_size'dan
+        # bağımsız sabit bir değer. dim=640, num_heads=10 iken head_dim=64 vermezsek
+        # key/value projeksiyonları 640 yerine 2560/5120'ye şişiyor (~4x parametre şişmesi).
+        "gdn": {"num_heads": 10, "head_dim": 64},
         "attn": {"n_heads": 10, "n_kv_heads": 2, "max_seq_len": 2048},
     },
 )
