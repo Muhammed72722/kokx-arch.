@@ -27,20 +27,27 @@ from configs import PROBE_CONFIGS
 
 class PackedCodeStream(IterableDataset):
     """HF datasets üzerinden kod verisini stream edip seq_len'e paketler.
-    dataset_name'i kendi kod kaynağınla değiştir (Stack v2 alt kümesi,
-    StarCoderData, vb.) — burada varsayılan olarak açık bir kod korpusu kullanılıyor."""
 
-    def __init__(self, tokenizer, seq_len=2048, dataset_name="bigcode/the-stack-smol",
-                 dataset_config=None, text_field="content"):
+    Varsayılan: bigcode/starcoderdata (gated değil, script değil -- parquet,
+    dil bazlı data_dir ile yükleniyor). GitHub issues/commits/jupyter alt
+    kümeleri farklı şemaya sahip, bu yüzden data_dir mutlaka bir programlama
+    dili klasörü olmalı (python, java, javascript, cpp, vb.), boş bırakma."""
+
+    def __init__(self, tokenizer, seq_len=2048, dataset_name="bigcode/starcoderdata",
+                 dataset_config=None, data_dir="python", text_field="content"):
         self.tokenizer = tokenizer
         self.seq_len = seq_len
         self.dataset_name = dataset_name
         self.dataset_config = dataset_config
+        self.data_dir = data_dir
         self.text_field = text_field
 
     def __iter__(self):
         from datasets import load_dataset
-        ds = load_dataset(self.dataset_name, self.dataset_config, split="train", streaming=True)
+        ds = load_dataset(
+            self.dataset_name, self.dataset_config,
+            data_dir=self.data_dir, split="train", streaming=True,
+        )
         buffer = []
         for example in ds:
             text = example.get(self.text_field, "")
@@ -73,9 +80,10 @@ def main():
     parser.add_argument("--seq_len", type=int, default=2048)
     parser.add_argument("--max_lr", type=float, default=3e-4)
     parser.add_argument("--warmup_steps", type=int, default=200)
-    parser.add_argument("--dataset_name", type=str, default="codeparrot/github-code-clean")
+    parser.add_argument("--dataset_name", type=str, default="bigcode/starcoderdata")
     parser.add_argument("--dataset_config", type=str, default=None)
-    parser.add_argument("--text_field", type=str, default="code")
+    parser.add_argument("--data_dir", type=str, default="python")
+    parser.add_argument("--text_field", type=str, default="content")
     parser.add_argument("--tokenizer_name", type=str, default="bigcode/starcoder2-3b")
     parser.add_argument("--out_dir", type=str, default="./checkpoints")
     parser.add_argument("--log_every", type=int, default=20)
@@ -107,7 +115,7 @@ def main():
     stream = PackedCodeStream(
         tokenizer, seq_len=args.seq_len,
         dataset_name=args.dataset_name, dataset_config=args.dataset_config,
-        text_field=args.text_field,
+        data_dir=args.data_dir, text_field=args.text_field,
     )
     loader = DataLoader(stream, batch_size=args.batch_size, num_workers=2)
 
